@@ -1,0 +1,13 @@
+diff --git a/index.js b/index.js
+index 33778b5539b7fcd7a1e99474a4ecb1745fdfe508..aed6765e5a87a8bcff740f34d97785010dc5d01a 100644
+--- a/index.js
++++ b/index.js
+@@ -9,7 +9,7 @@ module.exports = inquire;
+  */
+ function inquire(moduleName) {
+     try {
+-        var mod = eval("quire".replace(/^/,"re"))(moduleName); // eslint-disable-line no-eval
++       var mod = require(moduleName); // eslint-disable-line no-eval
+         if (mod && (mod.length || Object.keys(mod).length))
+             return mod;
+     } catch (e) {} // eslint-disable-line no-empty

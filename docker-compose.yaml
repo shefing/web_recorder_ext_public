@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  node:
+    image: node:18-buster-slim
+    container_name: my-windows-node-build
+    command: sh -c "cd app;yarn;yarn run start-ext;sleep 30000"
+    volumes:
+      - ./:/app
+      - ./dist:/app/dist

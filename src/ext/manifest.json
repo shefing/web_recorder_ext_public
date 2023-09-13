@@ -1,0 +1,49 @@
+{
+  "name": "Webrecorder ArchiveWeb.page",
+  "description": "Create high-fidelity web archives directly in your browser",
+  "version": "$VERSION",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "host_permissions": [
+    "$ADMIN_URL"
+  ],
+  "permissions": [
+    "cookies",
+    "storage",
+    "notifications",
+    "debugger",
+    "tabs",
+    "activeTab",
+    "unlimitedStorage",
+    "webRequest",
+    "declarativeNetRequest",
+    "desktopCapture"
+  ],
+
+  "background": {
+    "service_worker": "bg.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "run_at": "document_idle",
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "32": "$ICON",
+    "128": "$ICON"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["ipfs-core.min.js", "pdf/*", "replay/*"],
+      "matches": []
+    }
+  ],
+  "manifest_version": 3
+}

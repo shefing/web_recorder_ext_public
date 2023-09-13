@@ -1,0 +1,120 @@
+{
+  "name": "webrecorder.extension",
+  "packageManager": "yarn@3.6.3",
+  "productName": "WebRecorder.Extension",
+  "version": "0.4.",
+  "main": "index.js",
+  "description": "Create Web Archives directly in your browser",
+  "repository": "https://github.com/shefing/web_recorder_ext",
+  "author": "Shefing",
+  "dependencies": {
+    "@logtail/browser": "^0.4.7",
+    "@protobufjs/inquire": "1.1.0",
+    "@webrecorder/archivewebpage": "^0.11.1",
+    "@webrecorder/awp-sw": "^0.4.2",
+    "@webrecorder/wabac": "^2.16.9",
+    "aws4fetch": "^1.0.17",
+    "browsertrix-behaviors": "^0.5.1",
+    "btoa": "^1.2.1",
+    "bulma": "^0.9.4",
+    "client-zip": "^2.3.0",
+    "hash-wasm": "^4.9.0",
+    "http-status-codes": "^2.2.0",
+    "pretty-bytes": "^6.0.0",
+    "querystring-es3": "^0.2.1",
+    "stream-browserify": "^3.0.0",
+    "unused-filename": "^4.0.1",
+    "url": "^0.11.0",
+    "uuid": "9.0.0",
+    "warcio": "^2.2.0"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "css-loader": "^6.2.0",
+    "dotenv-webpack": "^8.0.1",
+    "generate-json-webpack-plugin": "^2.0.0",
+    "mini-css-extract-plugin": "^2.3.0",
+    "raw-loader": "^4.0.2",
+    "sass": "^1.57.1",
+    "sass-loader": "^12.1.0",
+    "svg-inline-loader": "^0.8.2",
+    "terser-webpack-plugin": "^5.2.4",
+    "thread-loader": "^3.0.4",
+    "to-string-loader": "^1.1.6",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.8.0",
+    "webpack-dev-server": "^4.9.3",
+    "webpack-extension-reloader": "^1.1.4"
+  },
+  "files": [
+    "src/",
+    "dist/embed/"
+  ],
+  "scripts": {
+    "build": "webpack --mode production",
+    "build-dev": "webpack --mode development",
+    "start-ext": "webpack --mode=development --watch",
+    "start-embed": "webpack serve --mode development",
+    "dist": "yarn run build",
+    "dist-dev": "yarn run build-dev",
+    "release": "yarn run build",
+    "lint": "eslint ./src/ webpack.config.js"
+  },
+  "build": {
+    "productName": "ArchiveWeb.page",
+    "asar": true,
+    "appId": "net.webrecorder.archivewebpage",
+    "artifactName": "${productName}-${version}.${ext}",
+    "files": [
+      "!**/node_modules/**/*"
+    ],
+    "dmg": {
+      "title": "ArchiveWeb.page"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": "universal"
+        },
+        {
+          "target": "zip",
+          "arch": "universal"
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extraResources": [
+        "plugins-mac"
+      ]
+    },
+    "linux": {
+      "category": "Archiving;Utility;",
+      "target": [
+        "AppImage"
+      ],
+      "extraResources": [
+        "plugins-linux"
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "extraResources": [
+        "plugins-win"
+      ]
+    },
+    "directories": {
+      "buildResources": "build",
+      "output": "dist/bin/"
+    }
+  },
+  "resolutions": {
+    "@webrecorder/archivewebpage@^0.11.1": "patch:@webrecorder/archivewebpage@npm%3A0.11.2#./.yarn/patches/@webrecorder-archivewebpage-npm-0.11.2-fc4f35fbea.patch",
+    "@protobufjs/inquire@1.1.0": "patch:@protobufjs/inquire@npm%3A1.1.0#./.yarn/patches/@protobufjs-inquire-npm-1.1.0-3c7759e9ce.patch",
+    "@protobufjs/inquire@^1.1.0": "patch:@protobufjs/inquire@npm%3A1.1.0#./.yarn/patches/@protobufjs-inquire-npm-1.1.0-3c7759e9ce.patch"
+  }
+}
