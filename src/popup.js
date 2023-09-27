@@ -49,6 +49,7 @@ class RecPopup extends LitElement {
     this.connectionErrorDetails = false;
     this.tryAgain = false;
     this.noRole = false;
+    this.capturing = false;
   }
   static get properties() {
     return {
@@ -81,6 +82,7 @@ class RecPopup extends LitElement {
       connectionErrorDetails: { type: String },
       tryAgain: { type: Boolean },
       noRole: { type: Boolean },
+      capturing: { type: Boolean }
     };
   }
   async firstUpdated() {
@@ -97,21 +99,22 @@ class RecPopup extends LitElement {
 
   changeSize(reduce) {
     if (reduce) {
-      document.getElementsByTagName('html')[0].style.width = "490px";
-      document.getElementsByTagName('html')[0].style.height = "251px";
-    }
-    else {
-      document.getElementsByTagName('html')[0].style.width = "600px";
-      document.getElementsByTagName('html')[0].style.height = "490px";
+      document.getElementsByTagName("html")[0].style.width = "490px";
+      document.getElementsByTagName("html")[0].style.height = "251px";
+    } else {
+      document.getElementsByTagName("html")[0].style.width = "600px";
+      document.getElementsByTagName("html")[0].style.height = "490px";
     }
   }
 
-
   async onCapture() {
     let info = await chrome.runtime.getPlatformInfo();
-    let winOs = info.os === 'win'
+    let winOs = info.os === "win";
     const streamId = await new Promise((resolve) => {
-      winOs && setTimeout(() => { this.changeSize(false); }, 100);
+      winOs &&
+        setTimeout(() => {
+          this.changeSize(false);
+        }, 100);
       chrome.desktopCapture.chooseDesktopMedia(["window"], (streamId) => {
         resolve(streamId);
       });
@@ -255,6 +258,9 @@ class RecPopup extends LitElement {
         break;
       case "login-error":
         this.loginError(message);
+        break;
+      case "on-capture":
+      this.capturing = message.status;
         break;
       case "connection-error":
         this.loginError(message);
@@ -452,6 +458,12 @@ class RecPopup extends LitElement {
       .disable {
         pointer-events: none !important;
         opacity: 0.5;
+      }
+      
+      .capture{
+        animation-name: pulse;
+        animation-duration: 2.5s;
+        animation-iteration-count: infinite;
       }
 
       .recShaddow {
@@ -729,31 +741,33 @@ class RecPopup extends LitElement {
   }
   renderRecorderButton() {
     return html`
-<div class="record">
-   <div
-   class="${(this.status?.stopping && this.recording) || this.uploadStatus ? "disable" : ""} ${!this.recording ? "startRecord recordIcon" : "recShaddow recordIcon"
-      } "
-   @click="${!this.recording ? this.onStart : this.onStop}"
-   >
-   <div class="stop" /></div>  
-</div>
-${this.recording || this.uploadStatus
-        ? html`
-        <div>
-          <div class="cancel">
-            <wr-icon
-              @click="${this.cancelRecording}"
-              style="fill: white;display: flex;align-items: center; margin: auto;"
-              size="12px"
-              .src="${closeIcon}"
-            ></wr-icon>
-          </div>
-        </div>
-      `
-        : ""
+      <div class="record">
+        <div
+            class="${(this.status?.stopping && this.recording) || this.uploadStatus || this.capturing ? "disable" : ""} ${
+      !this.recording ? "startRecord recordIcon" : "recShaddow recordIcon"
+    } "
+            @click="${!this.recording ? this.onStart : this.onStop}"
+        >
+          <div class="stop" /></div>
+      </div>
+      ${
+        this.recording || this.uploadStatus
+          ? html`
+              <div>
+                <div class="cancel">
+                  <wr-icon
+                    @click="${this.cancelRecording}"
+                    style="fill: white;display: flex;align-items: center; margin: auto;"
+                    size="12px"
+                    .src="${closeIcon}"
+                  ></wr-icon>
+                </div>
+              </div>
+            `
+          : ""
       }
-${this.status?.stopping && this.recording ? html` <div class="loader"></div>` : ""}</div>
-`;
+      ${this.status?.stopping && this.recording ? html` <div class="loader"></div>` : ""}</div>
+    `;
   }
   renderLogin() {
     return html`<div class="login">
@@ -768,35 +782,35 @@ ${this.status?.stopping && this.recording ? html` <div class="loader"></div>` : 
         class="userinput"
         style="z-index: 200"
         @change="${(e) => {
-        this.username = e.target.value;
-      }}"
-        @keydown="${(e) => {
-        if (e.keyCode === 13) {
           this.username = e.target.value;
-          this.login();
-        }
-      }}"
+        }}"
+        @keydown="${(e) => {
+          if (e.keyCode === 13) {
+            this.username = e.target.value;
+            this.login();
+          }
+        }}"
       />
       <input
         class="userinput"
         type="password"
         placeholder="password"
         @change="${(e) => {
-        this.password = e.target.value;
-      }}"
-        @keydown="${(e) => {
-        if (e.keyCode === 13) {
           this.password = e.target.value;
-          this.login();
-        }
-      }}"
+        }}"
+        @keydown="${(e) => {
+          if (e.keyCode === 13) {
+            this.password = e.target.value;
+            this.login();
+          }
+        }}"
       />
       ${this.adminDetailsError
         ? html`<p style="color:red;padding-bottom:10px">${this.errorMessage}</p>
             <div class="adminAppLink" @click="${() => this.openAdminLink(`${process.env.ADMIN_URL}/login`)}">Admin Web application</div>`
         : this.error
-          ? html`<p style="color:red;padding-bottom:10px">${this.errorMessage}</p>`
-          : ""}
+        ? html`<p style="color:red;padding-bottom:10px">${this.errorMessage}</p>`
+        : ""}
       <button @click="${() => this.login()}" class="linkWrapper loginButton" title="test">
         ${this.loginLoader ? html` <div class="small-loader" /> ` : "LOGIN"}
       </button>
@@ -810,117 +824,139 @@ ${this.status?.stopping && this.recording ? html` <div class="loader"></div>` : 
         return html` ${this.loader
           ? html`<div class="container"><p class="loader"></p></div>`
           : this.isLoggedIn
-            ? html`
-<div class="container">
-   <div class="view-row">
-         <div @click="${() => this.openAdminLink(process.env.ADMIN_URL)}" class="logo">
-         <img src="logo.png" width="40px" height="40px"/> 
-      </div>
-      <div class="userLine"  >
-        <p style="margin-left: 4px;">${this.username}&nbsp </p>
-          <div>
-            <wr-icon
-            @click="${this.logout}"
-            style="fill: white;display: flex;align-items: center; margin: auto;cursor:pointer"
-            size="16px"
-            .src="${logoutIcon}"
-           >
-           </wr-icon>
-        </div>
-      </div>
-   </div>
-   ${this.canRecord
-                ? html`
-           <div class="view-row">
-             <div style="flex:1"></div>
-             ${this.renderRecorderButton()}
-              <div class="tryAgain">
-               ${this.tryAgain
-                    ? html`
-                     <p class="error-message"">Upload failed</p>
-                     <div class="linkWrapper">
-                      <div @click="${() => this.uploadAgain()}" class="manage">Try again</a>          
-                   `
-                    : ""
-                  }
-               ${this.uploadStatus
-                    ? html`
-                       <div class="uploading">
-                         uploading
-                         <div class="lds-ellipsis">
-                           <div></div>
-                           <div></div>
-                           <div></div>
-                           <div></div>
-                         </div>
-                       </div>
-                     `
-                    : ""
-                  }
-            </div>
+          ? html`
+                  <div class="container">
+                    <div class="view-row">
+                      <div @click="${() => this.openAdminLink(process.env.ADMIN_URL)}" class="logo">
+                        <img src="logo.png" width="40px" height="40px"/>
+                      </div>
+                      <div class="userLine"  >
+                        <p style="margin-left: 4px;">${this.username}&nbsp </p>
+                        <div>
+                          <wr-icon
+                              @click="${this.logout}"
+                              style="fill: white;display: flex;align-items: center; margin: auto;cursor:pointer"
+                              size="16px"
+                              .src="${logoutIcon}"
+                          >
+                          </wr-icon>
+                        </div>
+                      </div>
+                    </div>
+                    ${
+                      this.canRecord
+                        ? html`
+                          <div class="view-row">
+                            <div style="flex:1"></div>
+                            ${this.renderRecorderButton()}
+                            <div class="tryAgain">
+                              ${
+                                this.tryAgain
+                                  ? html`
+                                    <p class="error-message"">Upload failed</p>
+                                    <div class="linkWrapper">
+                                      <div @click="${() => this.uploadAgain()}" class="manage">Try again</a>
+                                  `
+                                  : ""
+                              }
+                              ${
+                                this.uploadStatus
+                                  ? html`
+                                      <div class="uploading">
+                                        uploading
+                                        <div class="lds-ellipsis">
+                                          <div></div>
+                                          <div></div>
+                                          <div></div>
+                                          <div></div>
+                                        </div>
+                                      </div>
+                                    `
+                                  : ""
+                              }
+                              ${
+                                this.capturing
+                                  ? html`
+                                      <div class="uploading">
+                                        Capturing
+                                        <div class="lds-ellipsis">
+                                          <div></div>
+                                          <div></div>
+                                          <div></div>
+                                          <div></div>
+                                        </div>
+                                      </div>
+                                    `
+                                  : ""
+                              }
+                            </div>
 
-             </div>
-           </div>
-         `
-                : this.noRole
-                  ? html`<div class="canNotRecord">You've not been assigned to any role to record contents, please contact the admin</div>`
-                  : html`<div class="canNotRecord">This page could not be recorded!</div>`
-              }
-${this.status && this.recording
-                ? html`<div class="view-row">
-        <div class="recordedSize">
-          <div class="red-dot"></div>
-          RECORDING - &nbsp ${prettyBytes(this.status.sizeNew)}
-        </div>
-      </div>`
-                : ""
-              }
-   <div class="view-row" style="align-items: end !important">
-      <div > 
-      ${this.canRecord
-                ? html`
-                <div class="checkbox_row">
-                  <div class="${this.recording && "disable"}">
-                    <label class="container_checkbox">
-                      ${this.screenshot
-                    ? html`<input
-                              type="checkbox"
-                              checked
-                              @change="${() => {
-                        this.onClickCapture();
-                      }}"
-                            />`
-                    : html` <input
-                              type="checkbox"
-                              @change="${() => {
-                        this.onClickCapture();
-                      }}"
-                            />`
-                  }
-                      <span class="checkmark"></span>
-                    </label>
+                          </div>
+                          </div>
+                        `
+                        : this.noRole
+                        ? html`<div class="canNotRecord">You've not been assigned to any role to record contents, please contact the admin</div>`
+                        : html`<div class="canNotRecord">This page could not be recorded!</div>`
+                    }
+                    ${
+                      this.status && this.recording
+                        ? html`<div class="view-row">
+                            <div class="recordedSize">
+                              <div class="red-dot"></div>
+                              RECORDING- &nbsp ${prettyBytes(this.status.sizeNew)}
+                            </div>
+                          </div>`
+                        : ""
+                    }
+                    <div class="view-row" style="align-items: end !important">
+                      <div >
+                        ${
+                          this.canRecord
+                            ? html`
+                              <div class="checkbox_row">
+                                <div class="${this.recording && "disable"}">
+                                  <label class="container_checkbox">
+                                    ${
+                                      this.screenshot
+                                        ? html`<input
+                                            type="checkbox"
+                                            checked
+                                            @change="${() => {
+                                              this.onClickCapture();
+                                            }}"
+                                          />`
+                                        : html` <input
+                                            type="checkbox"
+                                            @change="${() => {
+                                              this.onClickCapture();
+                                            }}"
+                                          />`
+                                    }
+                                    <span class="checkmark"></span>
+                                  </label>
+                                </div>
+                                <p id="text_" style="display:none">Checkbox is CHECKED!</p>
+                                <div class="screenshot_label">Screen Capture</div>
+                              </div>
+                              </div>
+                            `
+                            : ""
+                        }
+                      </div>
+                      ${
+                        this.canRecord
+                          ? html`<div>
+                            <div class=${this.adminLink.length ? "linkWrapper" : "disable"}>
+                              <div @click="${() => this.openAdminLink(this.adminLink)}" class="manage">MANAGE ARCHIVE</a>
+                              </div>
+                            </div>`
+                          : ""
+                      }
+                    </div>
                   </div>
-                  <p id="text_" style="display:none">Checkbox is CHECKED!</p>
-                  <div class="screenshot_label">Screen Capture</div>
-                </div>
-               </div>
-            `
-                : ""
-              }
-      </div>
-      ${this.canRecord
-                ? html`<div>
-         <div class=${this.adminLink.length ? "linkWrapper" : "disable"}>
-            <div @click="${() => this.openAdminLink(this.adminLink)}" class="manage">MANAGE ARCHIVE</a>
-         </div>
-      </div>`
-                : ""
-              }
-   </div>
-</div>
-</div>
-</div>`
-            : this.renderLogin()}`;
+                  </div>
+                  </div>`
+          : this.renderLogin()}`;
       } catch (error) {
         logger.error("renderingError", error);
         chrome.runtime.reload();

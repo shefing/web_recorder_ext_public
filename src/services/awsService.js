@@ -33,8 +33,9 @@ export const uploadFileToS3 = async (file, s3Path, internal, signal) => {
   }
 };
 
-export const generateS3Path = async (type = "wacz") => {
+export const generateS3Path = async (type = "wacz", fullPage = "") => {
   const user = await chrome.storage.local.get("user_id");
   let today = new Date();
-  return `${user.user_id}/${today.toLocaleDateString().split(",")[0].replaceAll("/", "_")}/${today.toTimeString().split(" ")[0].replaceAll(":", "_")}.${type}`;
+  let link = `${user.user_id}/${today.toLocaleDateString().split(",")[0].replaceAll("/", "_")}/${today.toTimeString().split(" ")[0].replaceAll(":", "_")}`;
+  return fullPage ? `${link}${fullPage}.${type}` : `${link}.${type}`;
 };

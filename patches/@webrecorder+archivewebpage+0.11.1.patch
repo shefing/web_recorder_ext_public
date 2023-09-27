@@ -1,0 +1,13 @@
+diff --git a/node_modules/@webrecorder/archivewebpage/src/extractPDF.js b/node_modules/@webrecorder/archivewebpage/src/extractPDF.js
+index 576e895..d0b80bf 100644
+--- a/node_modules/@webrecorder/archivewebpage/src/extractPDF.js
++++ b/node_modules/@webrecorder/archivewebpage/src/extractPDF.js
+@@ -23,7 +23,7 @@ async function extractPDF(url, baseUrl) {
+ 
+   try {
+     const res = await fetch(new URL("pdf/pdf.min.js", baseUrl).href);
+-    eval(await res.text());
++    //eval(await res.text());
+     
+     //pdfjsLib should now exist
+     // eslint-disable-next-line no-undef

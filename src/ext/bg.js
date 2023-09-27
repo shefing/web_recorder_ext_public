@@ -19,6 +19,7 @@ import { CustomDownloader } from "./CustomDownloader";
 import { BEHAVIOR_RUNNING } from "@webrecorder/archivewebpage/src/consts";
 
 // ===========================================================================
+const IMG_TYPE = "jpeg";
 self.recorders = {};
 self.newRecId = null;
 
@@ -224,20 +225,29 @@ class CustomBrowserRecorder extends BrowserRecorder {
     );
   }
 
-  handleScreenShot() {
+  async handleScreenShot() {
     if (this.isScreenshot) {
       const key = `${this.tabId}`;
-      chrome.storage.local.get(key, async (result) => {
-        const s3Path = await generateS3Path("png");
-        if (!result[key]) return;
-        const file = result[key]; //getBlobs(result[key]);
-        this.clearScreenshotStorage();
-        const resInfo = await initialScreenCaptureInfo(this.archiveId, s3Path, `"${file}"`);
-        if (resInfo.errors) {
-          first_port.postMessage({ type: "connection-error", status: "connection", details: "Upload screenshot failed, please contact support" });
-          logger.error("Error upload screenshot", resInfo.errors);
-        }
-      });
+      const fullPageKey = `${this.tabId}_fullPage`;
+      const [result, fullPageResult] = await Promise.all([
+        new Promise((resolve) => chrome.storage.local.get(key, resolve)),
+        new Promise((resolve) => chrome.storage.local.get(fullPageKey, resolve)),
+      ]);
+
+      const s3Path = await generateS3Path(IMG_TYPE);
+      const fullPageS3Path = await generateS3Path(IMG_TYPE, "_fullPage");
+      const file = result[key];
+      const fullPageFile = fullPageResult[fullPageKey];
+
+      this.clearScreenshotStorage();
+      this.clearScreenshotStorage(fullPageKey);
+
+      const resInfo = initialScreenCaptureInfo(this.archiveId, s3Path, `"${file}"`, fullPageS3Path, `"${fullPageFile}"`);
+
+      if (resInfo.errors) {
+        first_port.postMessage({ type: "connection-error", status: "connection", details: "Upload screenshot failed, please contact support" });
+        logger.error("Error uploading screenshot", resInfo.errors);
+      }
     }
   }
 
@@ -274,8 +284,8 @@ class CustomBrowserRecorder extends BrowserRecorder {
     collLoader.deleteColl(this.collId);
   }
 
-  clearScreenshotStorage() {
-    chrome.storage.local.remove([`${this.tabId}`], function () {
+  clearScreenshotStorage(keyToRemove = `${this.tabId}`) {
+    chrome.storage.local.remove([keyToRemove], function () {
       const error = chrome.runtime.lastError;
       if (error) {
         logger.error("Error in clear screenshot storage", error);
@@ -319,6 +329,41 @@ class CustomBrowserRecorder extends BrowserRecorder {
       const status = this.getStatusMsg();
       this.port.postMessage(status);
     }
+  }
+  async timeout(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  async start() {
+    first_port.postMessage({ type: "on-capture", status: true });
+    let tabId = this.tabId;
+    await chrome.debugger.sendCommand({ tabId: tabId }, "Page.enable", {});
+    let metrics = await chrome.debugger.sendCommand({ tabId: tabId }, "Page.getLayoutMetrics", {});
+    const { height, width } = metrics.contentSize;
+    // Overwrite clip for full page at all times.
+    let clip = { x: 0, y: 0, width, height, scale: 1 };
+
+    await chrome.debugger.sendCommand({ tabId: tabId }, "Emulation.setDeviceMetricsOverride", {
+      height: Math.ceil(height),
+      width: Math.ceil(width),
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await this.timeout(3000);
+    let response = await chrome.debugger.sendCommand({ tabId: tabId }, "Page.captureScreenshot", {
+      format: IMG_TYPE,
+      quality: 60,
+      captureBeyondViewport: false,
+      clip,
+    });
+    await chrome.debugger.sendCommand({ tabId: tabId }, "Emulation.clearDeviceMetricsOverride", {});
+    const base64Data = "data:image/png;base64," + response.data;
+    console.log("capture success");
+    const key = `${tabId}_fullPage`;
+    const obj = {};
+    obj[key] = base64Data;
+    chrome.storage.local.set(obj);
+    first_port.postMessage({ type: "on-capture", status: false });
+    return await super.start();
   }
 }
 
@@ -568,6 +613,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // ===========================================================================
 async function startRecorder(tabId, opts) {
+  // first_port.postMessage({ type: "on-capture", status:false});
   if (!self.recorders[tabId]) {
     opts.collLoader = collLoader;
     opts.openWinMap = openWinMap;

@@ -105,7 +105,7 @@ export const updateS3Info = async (archiveId, size, waczContent, publicationDate
   }
 };
 
-export const initialScreenCaptureInfo = async (archiveId, link, file) => {
+export const initialScreenCaptureInfo = async (archiveId, link,file,fullPageLink,fullPageImage) => {
   const traceId = uuid();
   await refreshToken();
   const query = `
@@ -114,6 +114,8 @@ export const initialScreenCaptureInfo = async (archiveId, link, file) => {
             archiveId:${JSON.stringify(archiveId)},
             s3Link: ${JSON.stringify(link)},
             imageFile: ${file}
+            fullPageLink: ${JSON.stringify(fullPageLink)},
+            fullPageImage: ${fullPageImage}
            }) {_id}}
         `;
 
